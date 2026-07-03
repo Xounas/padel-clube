@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { brl } from "@/lib/format";
+import { taxaAsaasDe, IMPOSTO_PERCENT } from "@/lib/taxas";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,10 @@ export default async function FinanceiroPage() {
     .select("*")
     .gt("valor_em_atraso", 0)
     .order("valor_em_atraso", { ascending: false });
+  const { data: pagas } = await db
+    .from("cobrancas")
+    .select("valor_pago, forma")
+    .eq("status", "pago");
 
   const totais = (fin ?? []).reduce(
     (
@@ -32,6 +37,16 @@ export default async function FinanceiroPage() {
     (a: number, r: any) => a + Number(r.valor_em_atraso || 0),
     0,
   );
+
+  // DRE (estimativa): receita − custo raquetes − taxa Asaas − impostos
+  const receita = totais.arrecadado;
+  const custoRaquetes = totais.arrecadado - totais.lucro; // = custo_desembolsado
+  const taxaAsaas = (pagas ?? []).reduce(
+    (a: number, p: any) => a + taxaAsaasDe(p.forma, Number(p.valor_pago || 0)),
+    0,
+  );
+  const impostos = receita * IMPOSTO_PERCENT;
+  const lucroLiquido = receita - custoRaquetes - taxaAsaas - impostos;
 
   return (
     <div className="stack">
@@ -54,6 +69,59 @@ export default async function FinanceiroPage() {
           </div>
           <div className="kpi-label">Em atraso (inadimplência)</div>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="spread">
+          <h3 style={{ margin: 0 }}>DRE — resultado líquido</h3>
+          <span className="badge badge-muted">estimativa</span>
+        </div>
+        <table>
+          <tbody>
+            <tr>
+              <td>Receita (parcelas recebidas)</td>
+              <td style={{ textAlign: "right" }}>{brl(receita)}</td>
+            </tr>
+            <tr>
+              <td className="muted">(−) Custo das raquetes entregues</td>
+              <td style={{ textAlign: "right", color: "var(--danger)" }}>
+                − {brl(custoRaquetes)}
+              </td>
+            </tr>
+            <tr>
+              <td className="muted">(−) Taxa Asaas (boleto/PIX/cartão)</td>
+              <td style={{ textAlign: "right", color: "var(--danger)" }}>
+                − {brl(taxaAsaas)}
+              </td>
+            </tr>
+            <tr>
+              <td className="muted">
+                (−) Impostos (~{Math.round(IMPOSTO_PERCENT * 100)}% sobre receita)
+              </td>
+              <td style={{ textAlign: "right", color: "var(--danger)" }}>
+                − {brl(impostos)}
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <strong>= Lucro líquido</strong>
+              </td>
+              <td style={{ textAlign: "right" }}>
+                <strong
+                  style={{
+                    color: lucroLiquido >= 0 ? "var(--accent)" : "var(--danger)",
+                    fontSize: 18,
+                  }}
+                >
+                  {brl(lucroLiquido)}
+                </strong>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p className="muted small" style={{ margin: "8px 0 0" }}>
+          Taxas e impostos são estimativas configuráveis em src/lib/taxas.ts.
+        </p>
       </div>
 
       <div className="card">
