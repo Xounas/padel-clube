@@ -22,7 +22,7 @@ export default function Home() {
 
       <section className="container" style={{ paddingTop: 72, paddingBottom: 48 }}>
         <div style={{ maxWidth: 720 }}>
-          <span className="badge badge-ok">🎾 Clube de contemplação</span>
+          <span className="badge badge-ok">Consórcio de raquetes de padel</span>
           <h1 style={{ fontSize: 46, lineHeight: 1.05, margin: "18px 0 12px" }}>
             Sua raquete de padel dos sonhos,{" "}
             <span style={{ color: "var(--primary)" }}>parcelada em grupo</span>.
