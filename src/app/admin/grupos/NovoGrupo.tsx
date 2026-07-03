@@ -1,8 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import { criarGrupo } from "./actions";
 import { PLANOS, planoPorId, lucroPorCota } from "@/lib/planos";
+
+/** Botão que se desabilita enquanto o envio está em andamento (anti-duplo-clique). */
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button className="btn" type="submit" disabled={pending}>
+      {pending ? "Criando..." : "Criar grupo"}
+    </button>
+  );
+}
 
 export function NovoGrupo() {
   const [open, setOpen] = useState(false);
@@ -58,7 +69,14 @@ export function NovoGrupo() {
         </div>
 
         {/* key força o remount ao trocar de plano, aplicando os defaults */}
-        <form action={criarGrupo} className="stack" key={planoId}>
+        <form
+          action={async (fd) => {
+            await criarGrupo(fd);
+            setOpen(false); // fecha o modal ao concluir (evita reenvio)
+          }}
+          className="stack"
+          key={planoId}
+        >
           <input type="hidden" name="plano_id" value={planoId} />
           <div>
             <label className="label">Nome do grupo</label>
@@ -116,9 +134,7 @@ export function NovoGrupo() {
             </div>
           </div>
           <div className="row">
-            <button className="btn" type="submit">
-              Criar grupo
-            </button>
+            <SubmitButton />
             <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>
               Cancelar
             </button>

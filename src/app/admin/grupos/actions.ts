@@ -36,3 +36,24 @@ export async function mudarStatusGrupo(id: string, status: string) {
   if (error) throw new Error(error.message);
   revalidatePath("/admin/grupos");
 }
+
+/**
+ * Exclui um grupo — só se estiver VAZIO (sem cotas), para não apagar dados de
+ * participantes por engano. Grupo com cotas deve ser cancelado, não excluído.
+ */
+export async function excluirGrupo(id: string) {
+  await requireAdmin();
+  const db = createAdminClient();
+  const { count } = await db
+    .from("cotas")
+    .select("id", { count: "exact", head: true })
+    .eq("grupo_id", id);
+  if ((count ?? 0) > 0) {
+    throw new Error(
+      "Este grupo tem cotas de participantes — use 'Cancelar' em vez de excluir.",
+    );
+  }
+  const { error } = await db.from("grupos").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/grupos");
+}

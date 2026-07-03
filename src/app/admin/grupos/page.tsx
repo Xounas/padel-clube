@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { brl } from "@/lib/format";
 import { statusBadge } from "@/lib/format";
 import { NovoGrupo } from "./NovoGrupo";
+import { AcoesGrupo } from "./AcoesGrupo";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export default async function GruposPage() {
               <th>Config</th>
               <th>Lucro/cota</th>
               <th>Status</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -66,12 +68,15 @@ export default async function GruposPage() {
                   <td>
                     <span className={`badge ${b.cls}`}>{b.label}</span>
                   </td>
+                  <td>
+                    <AcoesGrupo id={g.id} usadas={usadas} status={g.status} />
+                  </td>
                 </tr>
               );
             })}
             {(grupos ?? []).length === 0 && (
               <tr>
-                <td colSpan={6} className="muted">
+                <td colSpan={7} className="muted">
                   Nenhum grupo. Crie o primeiro com o botão acima.
                 </td>
               </tr>
