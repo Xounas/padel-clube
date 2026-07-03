@@ -12,6 +12,7 @@ export default async function AdminLayout({
       <TopNav
         nome={profile.nome || "Admin"}
         items={[
+          { href: "/admin/dashboard", label: "Painel" },
           { href: "/admin/financeiro", label: "Financeiro" },
           { href: "/admin/grupos", label: "Grupos" },
           { href: "/admin/cotas", label: "Cotas" },
