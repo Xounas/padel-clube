@@ -229,8 +229,29 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", cota.id);
 
-    // insere já em `cobrancas` as parcelas que o Asaas gerou (não depender só do
-    // webhook). As parcelas futuras chegam depois via webhook PAYMENT_CREATED.
+    // GARANTE a 1ª parcela em `cobrancas` já na adesão, com os dados que já temos
+    // (o Asaas às vezes ainda NÃO gerou a cobrança neste instante -> não dá pra
+    // depender de listSubscriptionPayments). O webhook depois casa por competência.
+    const taxa = Number(grupo.valor_mensal) * (Number(grupo.taxa_adm_percent) / 100);
+    const { error: cobErr } = await db.from("cobrancas").upsert(
+      {
+        cota_id: cota.id,
+        grupo_id,
+        competencia: nextDueDate.slice(0, 7) + "-01",
+        parcela_num: 1,
+        valor: Number(grupo.valor_mensal),
+        valor_taxa_adm: taxa,
+        vencimento: nextDueDate,
+        status: "pendente",
+      },
+      { onConflict: "cota_id,competencia" },
+    );
+    if (cobErr) {
+      // não derruba a adesão, mas registra o motivo p/ diagnóstico
+      console.error("Falha ao inserir 1ª cobrança:", cobErr.message);
+    }
+
+    // Best-effort: se o Asaas já gerou a fatura, enriquece com id/URL/status.
     let payUrl: string | null = null;
     try {
       const pays: any = await listSubscriptionPayments(sub.id);
