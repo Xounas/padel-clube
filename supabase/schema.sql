@@ -187,12 +187,12 @@ select
   count(c.*) filter (where c.status = 'pago')                    as parcelas_pagas,
   coalesce(sum(c.valor_pago) filter (where c.status = 'pago'),0) as arrecadado,
   coalesce(sum(c.valor),0)                                       as arrecadacao_prevista,
-  -- custo já desembolsado (raquetes entregues)
+  -- custo já desembolsado (raquetes entregues) — usa custo_real quando informado
   count(ct.*) filter (where ct.entregue)                         as raquetes_entregues,
-  coalesce(count(ct.*) filter (where ct.entregue),0) * g.bem_custo as custo_desembolsado,
+  coalesce(sum(coalesce(ct.custo_real, g.bem_custo)) filter (where ct.entregue),0) as custo_desembolsado,
   -- lucro em caixa (arrecadado − custo entregue)
   coalesce(sum(c.valor_pago) filter (where c.status = 'pago'),0)
-    - coalesce(count(ct.*) filter (where ct.entregue),0) * g.bem_custo as lucro_caixa,
+    - coalesce(sum(coalesce(ct.custo_real, g.bem_custo)) filter (where ct.entregue),0) as lucro_caixa,
   -- lucro projetado ao fim do grupo
   (g.total_cotas * g.valor_mensal * g.duracao_meses) - (g.total_cotas * g.bem_custo) as lucro_projetado
 from grupos g
@@ -375,6 +375,13 @@ alter table grupos add column if not exists bem_imagem_url text;
 alter table cotas  add column if not exists raquete_modelo text;
 alter table cotas  add column if not exists raquete_descricao text;
 alter table cotas  add column if not exists raquete_imagem_url text;
+
+-- Fluxo de compra/entrega da raquete ao contemplado (gestão logística + custo real)
+alter table contemplacoes add column if not exists status_entrega text not null default 'aguardando';
+  -- aguardando | comprado | enviado | entregue
+alter table contemplacoes add column if not exists custo_real numeric(12,2);
+alter table contemplacoes add column if not exists fornecedor text;
+alter table contemplacoes add column if not exists rastreio text;
 
 -- Bucket público de imagens de raquetes
 insert into storage.buckets (id, name, public)

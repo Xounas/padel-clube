@@ -19,6 +19,7 @@ export default async function AdminLayout({
           { href: "/admin/cobrancas", label: "Cobranças" },
           { href: "/admin/inadimplencia", label: "Inadimplência" },
           { href: "/admin/contemplacao", label: "Contemplação" },
+          { href: "/admin/entregas", label: "Entregas" },
         ]}
       />
       <main className="container" style={{ paddingTop: 28, paddingBottom: 60 }}>
