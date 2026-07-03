@@ -38,19 +38,26 @@ export async function mudarStatusGrupo(id: string, status: string) {
 }
 
 /**
- * Exclui um grupo — só se estiver VAZIO (sem cotas), para não apagar dados de
- * participantes por engano. Grupo com cotas deve ser cancelado, não excluído.
+ * Exclui um grupo — bloqueado se houver ATIVIDADE REAL (parcela paga ou
+ * contemplação), para nunca apagar dados financeiros por engano. Grupos só com
+ * cotas não pagas (ex.: duplicata de teste) podem ser excluídos; o cascade
+ * remove as cotas/cobranças pendentes. Para grupo com atividade, use 'Cancelar'.
  */
 export async function excluirGrupo(id: string) {
   await requireAdmin();
   const db = createAdminClient();
-  const { count } = await db
-    .from("cotas")
+  const { count: pagas } = await db
+    .from("cobrancas")
+    .select("id", { count: "exact", head: true })
+    .eq("grupo_id", id)
+    .eq("status", "pago");
+  const { count: contempladas } = await db
+    .from("contemplacoes")
     .select("id", { count: "exact", head: true })
     .eq("grupo_id", id);
-  if ((count ?? 0) > 0) {
+  if ((pagas ?? 0) > 0 || (contempladas ?? 0) > 0) {
     throw new Error(
-      "Este grupo tem cotas de participantes — use 'Cancelar' em vez de excluir.",
+      "Grupo com pagamento/contemplação — use 'Cancelar' em vez de excluir.",
     );
   }
   const { error } = await db.from("grupos").delete().eq("id", id);

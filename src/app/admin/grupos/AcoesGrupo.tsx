@@ -5,11 +5,11 @@ import { excluirGrupo, mudarStatusGrupo } from "./actions";
 
 export function AcoesGrupo({
   id,
-  usadas,
+  temAtividade,
   status,
 }: {
   id: string;
-  usadas: number;
+  temAtividade: boolean;
   status: string;
 }) {
   const [loading, setLoading] = useState(false);
@@ -28,14 +28,14 @@ export function AcoesGrupo({
 
   return (
     <div className="row" style={{ gap: 6 }}>
-      {usadas === 0 ? (
+      {!temAtividade ? (
         <button
           className="btn btn-ghost small"
           disabled={loading}
           onClick={() =>
             run(
               () => excluirGrupo(id),
-              "Excluir este grupo vazio? Esta ação não pode ser desfeita.",
+              "Excluir este grupo (sem pagamentos)? Esta ação não pode ser desfeita.",
             )
           }
         >

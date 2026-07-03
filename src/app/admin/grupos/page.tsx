@@ -1,6 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server";
-import { brl } from "@/lib/format";
-import { statusBadge } from "@/lib/format";
+import { brl, dataBR, statusBadge } from "@/lib/format";
 import { NovoGrupo } from "./NovoGrupo";
 import { AcoesGrupo } from "./AcoesGrupo";
 
@@ -13,14 +12,25 @@ export default async function GruposPage() {
     .select("*")
     .order("criado_em", { ascending: false });
 
-  // vagas por grupo
+  // vagas + atividade real (pago/contemplado) por grupo
   const vagas: Record<string, number> = {};
+  const temAtividade: Record<string, boolean> = {};
   for (const g of grupos ?? []) {
     const { count } = await db
       .from("cotas")
       .select("id", { count: "exact", head: true })
       .eq("grupo_id", g.id);
-    vagas[g.id] = (count ?? 0);
+    vagas[g.id] = count ?? 0;
+    const { count: pagas } = await db
+      .from("cobrancas")
+      .select("id", { count: "exact", head: true })
+      .eq("grupo_id", g.id)
+      .eq("status", "pago");
+    const { count: cont } = await db
+      .from("contemplacoes")
+      .select("id", { count: "exact", head: true })
+      .eq("grupo_id", g.id);
+    temAtividade[g.id] = (pagas ?? 0) > 0 || (cont ?? 0) > 0;
   }
 
   return (
@@ -55,6 +65,10 @@ export default async function GruposPage() {
                   <td>
                     <strong>{g.nome}</strong>
                     <div className="muted small">{g.bem_descricao}</div>
+                    <div className="muted small">
+                      #{String(g.id).slice(0, 8)} · criado {dataBR(g.criado_em)}
+                      {temAtividade[g.id] && " · com pagamento"}
+                    </div>
                   </td>
                   <td>{brl(g.valor_mensal)}</td>
                   <td>
@@ -69,7 +83,11 @@ export default async function GruposPage() {
                     <span className={`badge ${b.cls}`}>{b.label}</span>
                   </td>
                   <td>
-                    <AcoesGrupo id={g.id} usadas={usadas} status={g.status} />
+                    <AcoesGrupo
+                      id={g.id}
+                      temAtividade={temAtividade[g.id] ?? false}
+                      status={g.status}
+                    />
                   </td>
                 </tr>
               );
