@@ -38,8 +38,29 @@ export async function POST(req: NextRequest) {
     payload: body,
   });
 
-  // localiza a cobrança pela referência do Asaas
-  const cotaId = payment.externalReference || null;
+  // resolve a cota: 1) externalReference (cota.id) ou 2) pela assinatura
+  // (pagamentos gerados por subscription costumam vir SEM externalReference).
+  let cotaId: string | null = payment.externalReference || null;
+  let grupoId: string | null = null;
+  if (!cotaId && payment.subscription) {
+    const { data: c } = await db
+      .from("cotas")
+      .select("id, grupo_id")
+      .eq("asaas_subscription_id", payment.subscription)
+      .maybeSingle();
+    if (c) {
+      cotaId = c.id;
+      grupoId = c.grupo_id;
+    }
+  }
+  if (cotaId && !grupoId) {
+    const { data: c } = await db
+      .from("cotas")
+      .select("grupo_id")
+      .eq("id", cotaId)
+      .maybeSingle();
+    grupoId = c?.grupo_id ?? null;
+  }
 
   const patch: Record<string, any> = {
     asaas_payment_id: payment.id,
@@ -81,15 +102,21 @@ export async function POST(req: NextRequest) {
 
   if (existing) {
     await db.from("cobrancas").update(patch).eq("id", existing.id);
-    if (patch.status && cotaId) await db.rpc("recalc_pontuacao", { p_cota_id: existing.cota_id });
-  } else if (cotaId) {
+    await db.rpc("recalc_pontuacao", { p_cota_id: existing.cota_id });
+  } else if (cotaId && grupoId) {
     const competencia = (payment.dueDate as string).slice(0, 7) + "-01";
-    await db.from("cobrancas").upsert(
-      { cota_id: cotaId, competencia, ...patch },
+    const { error } = await db.from("cobrancas").upsert(
+      { cota_id: cotaId, grupo_id: grupoId, competencia, ...patch },
       { onConflict: "cota_id,competencia" },
     );
+    if (error) {
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: 500 },
+      );
+    }
     await db.rpc("recalc_pontuacao", { p_cota_id: cotaId });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, cota: cotaId });
 }

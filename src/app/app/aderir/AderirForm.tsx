@@ -50,7 +50,9 @@ export function AderirForm({ grupo }: { grupo: { id: string; nome: string } }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({
+        error: `Erro ${res.status} no servidor. Tente novamente.`,
+      }));
       if (!res.ok) {
         setMsg({ tipo: "danger", texto: data.error ?? "Erro na adesão" });
       } else if (data.aprovado === false) {

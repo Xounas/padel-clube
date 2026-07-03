@@ -349,11 +349,15 @@ create policy acoes_admin on cobranca_acoes for all using (is_admin()) with chec
 -- TRIGGER: cria profile automático ao registrar usuário
 -- =====================================================================
 create or replace function handle_new_user()
-returns trigger language plpgsql security definer as $$
+returns trigger language plpgsql security definer
+set search_path = public as $$
 begin
-  insert into profiles (id, email, nome)
+  insert into public.profiles (id, email, nome)
   values (new.id, new.email, coalesce(new.raw_user_meta_data->>'nome',''))
   on conflict (id) do nothing;
+  return new;
+exception when others then
+  -- nunca bloquear a criação do usuário por causa do profile
   return new;
 end $$;
 

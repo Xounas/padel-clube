@@ -97,21 +97,28 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 2) cliente Asaas (reusa se já existir)
+  // 2) cliente Asaas (reusa se já existir) — erros do Asaas viram JSON legível
   let customerId = profile?.asaas_customer_id ?? null;
   if (!customerId) {
-    const customer = await createCustomer({
-      name: profile?.nome || profile?.email || "Membro Padel Clube",
-      cpfCnpj: cpf.replace(/\D/g, ""),
-      email: profile?.email ?? undefined,
-      mobilePhone: telefone ?? undefined,
-      externalReference: user.id,
-    });
-    customerId = customer.id;
-    await db
-      .from("profiles")
-      .update({ asaas_customer_id: customerId })
-      .eq("id", user.id);
+    try {
+      const customer = await createCustomer({
+        name: profile?.nome || profile?.email || "Membro Padel Clube",
+        cpfCnpj: cpf.replace(/\D/g, ""),
+        email: profile?.email ?? undefined,
+        mobilePhone: telefone ?? undefined,
+        externalReference: user.id,
+      });
+      customerId = customer.id;
+      await db
+        .from("profiles")
+        .update({ asaas_customer_id: customerId })
+        .eq("id", user.id);
+    } catch (e: any) {
+      return NextResponse.json(
+        { error: e?.message ?? "Falha ao criar cliente no Asaas" },
+        { status: 400 },
+      );
+    }
   }
 
   // 3) aloca a próxima cota livre (numero sequencial)
@@ -222,12 +229,36 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", cota.id);
 
+    // insere já em `cobrancas` as parcelas que o Asaas gerou (não depender só do
+    // webhook). As parcelas futuras chegam depois via webhook PAYMENT_CREATED.
     let payUrl: string | null = null;
     try {
       const pays: any = await listSubscriptionPayments(sub.id);
-      payUrl = pays?.data?.[0]?.invoiceUrl ?? null;
+      const lista: any[] = pays?.data ?? [];
+      payUrl = lista[0]?.invoiceUrl ?? null;
+      for (const p of lista) {
+        const pago = p.status === "RECEIVED" || p.status === "CONFIRMED";
+        await db.from("cobrancas").upsert(
+          {
+            cota_id: cota.id,
+            grupo_id,
+            competencia: String(p.dueDate).slice(0, 7) + "-01",
+            valor: p.value,
+            valor_taxa_adm:
+              Number(p.value) * (Number(grupo.taxa_adm_percent) / 100),
+            vencimento: p.dueDate,
+            status: pago ? "pago" : "pendente",
+            asaas_payment_id: p.id,
+            asaas_invoice_url: p.invoiceUrl ?? null,
+            data_pagamento: pago ? (p.paymentDate ?? null) : null,
+            valor_pago: pago ? p.value : null,
+          },
+          { onConflict: "cota_id,competencia" },
+        );
+      }
+      await db.rpc("recalc_pontuacao", { p_cota_id: cota.id });
     } catch {
-      /* fatura pode ainda não ter sido gerada */
+      /* fatura pode ainda não ter sido gerada — webhook cobre depois */
     }
 
     return NextResponse.json({
