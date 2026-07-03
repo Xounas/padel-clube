@@ -365,3 +365,32 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function handle_new_user();
+
+-- =====================================================================
+-- RAQUETE (modelo + imagem + descrição) — por GRUPO e por COTA
+-- Idempotente: pode rodar no banco já existente.
+-- =====================================================================
+alter table grupos add column if not exists bem_modelo text;
+alter table grupos add column if not exists bem_imagem_url text;
+alter table cotas  add column if not exists raquete_modelo text;
+alter table cotas  add column if not exists raquete_descricao text;
+alter table cotas  add column if not exists raquete_imagem_url text;
+
+-- Bucket público de imagens de raquetes
+insert into storage.buckets (id, name, public)
+values ('raquetes', 'raquetes', true)
+on conflict (id) do nothing;
+
+-- Políticas do bucket: leitura pública, escrita/edição por autenticados
+drop policy if exists raquetes_read   on storage.objects;
+drop policy if exists raquetes_write  on storage.objects;
+drop policy if exists raquetes_update on storage.objects;
+drop policy if exists raquetes_delete on storage.objects;
+create policy raquetes_read   on storage.objects for select
+  using (bucket_id = 'raquetes');
+create policy raquetes_write  on storage.objects for insert to authenticated
+  with check (bucket_id = 'raquetes');
+create policy raquetes_update on storage.objects for update to authenticated
+  using (bucket_id = 'raquetes');
+create policy raquetes_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'raquetes');

@@ -45,10 +45,25 @@ export default async function AderirPage() {
       <div className="grid grid-2">
         {comVagas.map((g) => (
           <div key={g.id} className="card stack">
+            {g.bem_imagem_url && (
+              <img
+                src={g.bem_imagem_url}
+                alt={g.bem_modelo ?? "Raquete"}
+                style={{
+                  width: "100%",
+                  height: 180,
+                  objectFit: "contain",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg-soft)",
+                }}
+              />
+            )}
             <div className="spread">
               <strong style={{ fontSize: 18 }}>{g.nome}</strong>
               <span className="badge badge-ok">{g.vagas} vaga(s)</span>
             </div>
+            {g.bem_modelo && <strong>{g.bem_modelo}</strong>}
             <p className="muted small" style={{ margin: 0 }}>
               {g.bem_descricao || "Raquete de padel"}
             </p>

@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { brl, dataBR, statusBadge } from "@/lib/format";
 import { NovoGrupo } from "./NovoGrupo";
 import { AcoesGrupo } from "./AcoesGrupo";
+import { EditarGrupo } from "./EditarGrupo";
 
 export const dynamic = "force-dynamic";
 
@@ -63,11 +64,46 @@ export default async function GruposPage() {
               return (
                 <tr key={g.id}>
                   <td>
-                    <strong>{g.nome}</strong>
-                    <div className="muted small">{g.bem_descricao}</div>
-                    <div className="muted small">
-                      #{String(g.id).slice(0, 8)} · criado {dataBR(g.criado_em)}
-                      {temAtividade[g.id] && " · com pagamento"}
+                    <div className="row" style={{ gap: 10, alignItems: "flex-start" }}>
+                      {g.bem_imagem_url ? (
+                        <img
+                          src={g.bem_imagem_url}
+                          alt={g.bem_modelo ?? "Raquete"}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            objectFit: "contain",
+                            borderRadius: 8,
+                            border: "1px solid var(--border)",
+                            background: "var(--bg-soft)",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 8,
+                            border: "1px dashed var(--border)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 18,
+                          }}
+                        >
+                          🎾
+                        </div>
+                      )}
+                      <div>
+                        <strong>{g.nome}</strong>
+                        <div className="muted small">
+                          {g.bem_modelo || g.bem_descricao || "Raquete"}
+                        </div>
+                        <div className="muted small">
+                          #{String(g.id).slice(0, 8)} · criado {dataBR(g.criado_em)}
+                          {temAtividade[g.id] && " · com pagamento"}
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td>{brl(g.valor_mensal)}</td>
@@ -83,11 +119,24 @@ export default async function GruposPage() {
                     <span className={`badge ${b.cls}`}>{b.label}</span>
                   </td>
                   <td>
-                    <AcoesGrupo
-                      id={g.id}
-                      temAtividade={temAtividade[g.id] ?? false}
-                      status={g.status}
-                    />
+                    <div className="row" style={{ gap: 6 }}>
+                      <EditarGrupo
+                        grupo={{
+                          id: g.id,
+                          nome: g.nome,
+                          bem_modelo: g.bem_modelo,
+                          bem_descricao: g.bem_descricao,
+                          bem_imagem_url: g.bem_imagem_url,
+                          bem_valor: Number(g.bem_valor),
+                          bem_custo: Number(g.bem_custo),
+                        }}
+                      />
+                      <AcoesGrupo
+                        id={g.id}
+                        temAtividade={temAtividade[g.id] ?? false}
+                        status={g.status}
+                      />
+                    </div>
                   </td>
                 </tr>
               );

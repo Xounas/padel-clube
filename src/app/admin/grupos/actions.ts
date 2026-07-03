@@ -13,6 +13,8 @@ export async function criarGrupo(formData: FormData) {
   const { error } = await db.from("grupos").insert({
     nome: String(formData.get("nome") || "Novo grupo"),
     bem_descricao: String(formData.get("bem_descricao") || ""),
+    bem_modelo: String(formData.get("bem_modelo") || "") || null,
+    bem_imagem_url: String(formData.get("bem_imagem_url") || "") || null,
     bem_valor: num("bem_valor", 2500),
     bem_custo: num("bem_custo", 1399),
     valor_mensal: num("valor_mensal", 110),
@@ -25,6 +27,26 @@ export async function criarGrupo(formData: FormData) {
     data_inicio: (formData.get("data_inicio") as string) || null,
   });
 
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/grupos");
+}
+
+/** Edita os dados da raquete/valores de um grupo (inclui imagem). */
+export async function editarGrupo(id: string, formData: FormData) {
+  await requireAdmin();
+  const db = createAdminClient();
+  const num = (k: string, def: number) => Number(formData.get(k) ?? def);
+  const { error } = await db
+    .from("grupos")
+    .update({
+      nome: String(formData.get("nome") || ""),
+      bem_modelo: String(formData.get("bem_modelo") || "") || null,
+      bem_descricao: String(formData.get("bem_descricao") || "") || null,
+      bem_imagem_url: String(formData.get("bem_imagem_url") || "") || null,
+      bem_valor: num("bem_valor", 2500),
+      bem_custo: num("bem_custo", 1399),
+    })
+    .eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/grupos");
 }

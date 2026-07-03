@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { criarGrupo } from "./actions";
 import { PLANOS, planoPorId, lucroPorCota } from "@/lib/planos";
+import { ImageUpload } from "@/components/ImageUpload";
 
 /** Botão que se desabilita enquanto o envio está em andamento (anti-duplo-clique). */
 function SubmitButton() {
@@ -18,6 +19,7 @@ function SubmitButton() {
 export function NovoGrupo() {
   const [open, setOpen] = useState(false);
   const [planoId, setPlanoId] = useState(PLANOS[0].id);
+  const [imagemUrl, setImagemUrl] = useState("");
   const plano = planoPorId(planoId);
 
   if (!open) {
@@ -72,12 +74,14 @@ export function NovoGrupo() {
         <form
           action={async (fd) => {
             await criarGrupo(fd);
+            setImagemUrl("");
             setOpen(false); // fecha o modal ao concluir (evita reenvio)
           }}
           className="stack"
           key={planoId}
         >
           <input type="hidden" name="plano_id" value={planoId} />
+          <input type="hidden" name="bem_imagem_url" value={imagemUrl} />
           <div>
             <label className="label">Nome do grupo</label>
             <input
@@ -87,13 +91,27 @@ export function NovoGrupo() {
               required
             />
           </div>
+          <div className="grid grid-2">
+            <div>
+              <label className="label">Modelo da raquete</label>
+              <input
+                name="bem_modelo"
+                className="input"
+                placeholder="Ex.: Adidas Metalbone 3.4"
+              />
+            </div>
+            <div>
+              <label className="label">Descrição</label>
+              <input
+                name="bem_descricao"
+                className="input"
+                placeholder="Ex.: carbono, formato lágrima"
+              />
+            </div>
+          </div>
           <div>
-            <label className="label">Raquete (descrição)</label>
-            <input
-              name="bem_descricao"
-              className="input"
-              placeholder="Ex.: Adidas Metalbone 3.4"
-            />
+            <label className="label">Foto da raquete</label>
+            <ImageUpload value={imagemUrl} onChange={setImagemUrl} />
           </div>
           <div className="grid grid-2">
             <div>
