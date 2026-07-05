@@ -88,10 +88,8 @@ export default function Home() {
 
         <div className="grid grid-3" style={{ marginTop: 56 }}>
           <div className="card">
-            <div className="kpi" style={{ color: "var(--primary)" }}>
-              R$110<span style={{ fontSize: 16 }}>/mês</span>
-            </div>
-            <div className="kpi-label">Mensalidade acessível em 24x</div>
+            <div className="kpi">12x · 18x · 24x</div>
+            <div className="kpi-label">Escolha o ritmo que cabe no seu bolso</div>
           </div>
           <div className="card">
             <div className="kpi">100%</div>
@@ -100,9 +98,9 @@ export default function Home() {
             </div>
           </div>
           <div className="card">
-            <div className="kpi">Grupos pequenos</div>
+            <div className="kpi">Sem juros</div>
             <div className="kpi-label">
-              Contemplação mensal por ordem + adimplência
+              Você paga o preço de mercado, sem juros de financiamento
             </div>
           </div>
         </div>
@@ -110,8 +108,8 @@ export default function Home() {
         <div style={{ marginTop: 48 }}>
           <h2 style={{ marginBottom: 6 }}>Escolha seu ritmo: 12x, 18x ou 24x</h2>
           <p className="muted" style={{ marginTop: 0 }}>
-            A mensalidade depende da raquete do grupo (valores abaixo são de
-            exemplo). Ritmos diferentes, todos os membros adimplentes são
+            A mensalidade é montada conforme a raquete de cada grupo — quanto
+            mais parcelas, menor a mensalidade. Todos os membros adimplentes são
             contemplados até o fim do grupo.
           </p>
           <div className="grid grid-3">
@@ -124,22 +122,17 @@ export default function Home() {
                   )}
                 </div>
                 <div className="kpi" style={{ color: "var(--primary)" }}>
-                  R${p.valor_mensal}
-                  <span style={{ fontSize: 16 }}>/mês</span>
+                  {p.duracao_meses}x
                 </div>
                 <p className="muted small" style={{ margin: 0 }}>{p.descricao}</p>
-                <div className="grid grid-2 small">
-                  <div>
-                    <div className="kpi-label">Duração</div>
-                    <strong>{p.duracao_meses} meses</strong>
-                  </div>
-                  <div>
-                    <div className="kpi-label">Vagas por grupo</div>
-                    <strong>{p.total_cotas} cotas</strong>
-                  </div>
+                <div className="small">
+                  <div className="kpi-label">Contemplação</div>
+                  <strong>
+                    {p.contemplados_por_mes} por mês · até {p.duracao_meses} meses
+                  </strong>
                 </div>
                 <Link href="/login?signup=1" className="btn">
-                  Quero o {p.nome.toLowerCase()}
+                  Quero {p.duracao_meses}x
                 </Link>
               </div>
             ))}
