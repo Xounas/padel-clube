@@ -61,7 +61,8 @@ const dataExtenso = (iso: string) =>
  * usado tanto pelo PDF quanto pela renderização HTML no portal.
  */
 export function montarContrato(s: ContratoSnapshot): ConteudoContrato {
-  const admin = s.admin_nome || "RAQUETECLUB ADMINISTRAÇÃO DE GRUPOS";
+  const admin = s.admin_nome || "JM SOLUÇÕES LTDA (RaqueteClub)";
+  const adminDoc = s.admin_doc || "36.845.130/0001-72";
   const aceito = !!s.aceite_em;
 
   const aceiteTexto = aceito
@@ -76,7 +77,7 @@ export function montarContrato(s: ContratoSnapshot): ConteudoContrato {
       {
         titulo: "PARTES",
         paragrafos: [
-          `ADMINISTRADORA: ${admin}${s.admin_doc ? `, inscrita no CNPJ ${s.admin_doc}` : ""}, doravante denominada ADMINISTRADORA.`,
+          `ADMINISTRADORA: ${admin}, inscrita no CNPJ ${adminDoc}, doravante denominada ADMINISTRADORA.`,
           `ADERENTE: ${s.nome}, inscrito(a) no CPF ${s.cpf}, doravante denominado(a) ADERENTE, titular da cota nº ${s.cota_numero} do grupo "${s.grupo_nome}".`,
         ],
       },
