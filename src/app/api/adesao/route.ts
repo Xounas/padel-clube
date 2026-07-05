@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { consultarCredito } from "@/lib/credito";
 import { createCustomer, tokenizarCartao } from "@/lib/asaas/client";
+import { emailBoasVindas } from "@/lib/email";
 
 /**
  * Adesão de um participante a um grupo.
@@ -167,6 +168,7 @@ export async function POST(req: NextRequest) {
     promissoria_valor: valorTotal,
     multa_percent: Number(grupo.multa_atraso_percent),
     juros_am_percent: 1,
+    multa_cancelamento_percent: Number(grupo.multa_cancelamento_percent ?? 30),
     aceite_em: "",
     aceite_ip: "",
   };
@@ -197,6 +199,8 @@ export async function POST(req: NextRequest) {
       { status: 409 },
     );
   }
+
+  if (profile?.email) await emailBoasVindas(profile.email, profile.nome || "");
 
   return NextResponse.json({
     aguardando: true,

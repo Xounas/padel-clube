@@ -8,6 +8,7 @@ import {
   listSubscriptionPayments,
   listInstallmentPayments,
 } from "@/lib/asaas/client";
+import { emailAprovado } from "@/lib/email";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -21,7 +22,7 @@ export async function aprovarCota(cotaId: string) {
 
   const { data: cota } = await db
     .from("cotas")
-    .select("*, grupos(*), profiles(asaas_customer_id, nome)")
+    .select("*, grupos(*), profiles(asaas_customer_id, nome, email)")
     .eq("id", cotaId)
     .single();
   if (!cota) throw new Error("Cota não encontrada.");
@@ -135,6 +136,10 @@ export async function aprovarCota(cotaId: string) {
   } catch (e: any) {
     throw new Error(`Falha ao ativar a cobrança: ${e?.message ?? e}`);
   }
+
+  const email = (cota.profiles as any)?.email;
+  if (email)
+    await emailAprovado(email, (cota.profiles as any)?.nome || "", grupo.nome);
 
   revalidatePath("/admin/aprovacoes");
   revalidatePath("/admin/dashboard");

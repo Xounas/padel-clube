@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { brl, dataBR, competenciaBR, statusBadge } from "@/lib/format";
+import { SolicitarCancelamento } from "./SolicitarCancelamento";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ export default async function MinhasCotasPage() {
   const { data: cotas } = await supabase
     .from("cotas")
     .select(
-      "id, numero, grupo_id, status, pontuacao, data_adesao, aceite_em, cartao_ultimos4, cartao_bandeira, grupos(nome, bem_descricao, valor_mensal, duracao_meses, total_cotas, contemplados_por_mes, bem_valor)",
+      "id, numero, grupo_id, status, pontuacao, data_adesao, aceite_em, cancelamento_solicitado_em, cartao_ultimos4, cartao_bandeira, grupos(nome, bem_descricao, valor_mensal, duracao_meses, total_cotas, contemplados_por_mes, bem_valor, multa_cancelamento_percent)",
     )
     .eq("participante_id", profile.id)
     .order("data_adesao", { ascending: false });
@@ -93,6 +94,13 @@ async function CotaCard({ cota }: { cota: any }) {
             </Link>
           )}
           <span className={`badge ${b.cls}`}>{b.label}</span>
+          {!["cancelada", "contemplada", "quitada"].includes(cota.status) && (
+            <SolicitarCancelamento
+              cotaId={cota.id}
+              jaSolicitado={!!cota.cancelamento_solicitado_em}
+              multaPercent={Number(cota.grupos?.multa_cancelamento_percent ?? 30)}
+            />
+          )}
         </div>
       </div>
 

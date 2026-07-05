@@ -14,6 +14,7 @@ export default async function AppLayout({
         items={[
           { href: "/app/minhas-cotas", label: "Minhas cotas" },
           { href: "/app/aderir", label: "Entrar num grupo" },
+          { href: "/app/perfil", label: "Meu cadastro" },
         ]}
       />
       <main className="container" style={{ paddingTop: 28, paddingBottom: 60 }}>

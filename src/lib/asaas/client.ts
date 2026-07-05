@@ -159,6 +159,11 @@ export async function listInstallmentPayments(installmentId: string) {
   return asaas(`/payments?installment=${installmentId}`);
 }
 
+/** Cancela uma assinatura recorrente (pausa cobranças futuras). */
+export async function cancelSubscription(subscriptionId: string) {
+  return asaas(`/subscriptions/${subscriptionId}`, { method: "DELETE" });
+}
+
 /** Cobrança avulsa (ex.: lance, taxa de adesão). */
 export async function createPayment(params: {
   customer: string;

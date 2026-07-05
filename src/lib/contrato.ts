@@ -18,6 +18,7 @@ export interface ContratoSnapshot {
   promissoria_valor: number;
   multa_percent: number;
   juros_am_percent: number;
+  multa_cancelamento_percent?: number; // multa por cancelamento a pedido (mín. 30%)
   aceite_em: string; // ISO ou "" enquanto pendente
   aceite_ip: string; // "" enquanto pendente
   admin_nome?: string;
@@ -112,7 +113,14 @@ export function montarContrato(s: ContratoSnapshot): ConteudoContrato {
           "4.3. Em caso de inadimplemento após a contemplação, o saldo devedor total torna-se imediatamente exigível, garantido pela NOTA PROMISSÓRIA vinculada a este contrato.",
         ],
       },
-      { titulo: "CLÁUSULA 5 — ACEITE ELETRÔNICO", paragrafos: [`5.1. ${aceiteTexto}`] },
+      {
+        titulo: "CLÁUSULA 5 — CANCELAMENTO A PEDIDO",
+        paragrafos: [
+          `5.1. O ADERENTE pode solicitar o cancelamento a qualquer tempo pelo portal. O cancelamento não é automático: depende de confirmação da ADMINISTRADORA.`,
+          `5.2. Em caso de cancelamento a pedido do ADERENTE, incidirá multa compensatória de ${s.multa_cancelamento_percent ?? 30}% sobre os valores pagos, a título de despesas administrativas e operacionais, nos limites do Código de Defesa do Consumidor.`,
+        ],
+      },
+      { titulo: "CLÁUSULA 6 — ACEITE ELETRÔNICO", paragrafos: [`6.1. ${aceiteTexto}`] },
     ],
     assinaturas: [`ADERENTE — ${s.nome}`, `ADMINISTRADORA — ${admin}`],
     promissoria: {

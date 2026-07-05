@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { statusBadge, dataBR } from "@/lib/format";
+import { AcoesCancelamento } from "./AcoesCancelamento";
 
 export const dynamic = "force-dynamic";
 
@@ -8,8 +9,9 @@ export default async function CotasPage() {
   const { data: cotas } = await db
     .from("cotas")
     .select(
-      "id, numero, status, pontuacao, data_adesao, grupos(nome), profiles(nome, email, analise_credito_status, score_credito)",
+      "id, numero, status, pontuacao, data_adesao, cancelamento_solicitado_em, cancelamento_motivo, grupos(nome), profiles(nome, email, analise_credito_status, score_credito)",
     )
+    .order("cancelamento_solicitado_em", { ascending: true, nullsFirst: false })
     .order("pontuacao", { ascending: false });
 
   return (
@@ -30,6 +32,7 @@ export default async function CotasPage() {
               <th>Adesão</th>
               <th>Status</th>
               <th>Contrato</th>
+              <th>Cancelamento</th>
             </tr>
           </thead>
           <tbody>
@@ -73,12 +76,31 @@ export default async function CotasPage() {
                       PDF ↗
                     </a>
                   </td>
+                  <td>
+                    {c.status === "cancelada" ? (
+                      <span className="muted small">cancelada</span>
+                    ) : c.cancelamento_solicitado_em ? (
+                      <div className="stack" style={{ gap: 4 }}>
+                        <span className="badge badge-warn">
+                          solicitado {dataBR(c.cancelamento_solicitado_em)}
+                        </span>
+                        {c.cancelamento_motivo && (
+                          <span className="muted small">
+                            “{c.cancelamento_motivo}”
+                          </span>
+                        )}
+                        <AcoesCancelamento cotaId={c.id} />
+                      </div>
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
+                  </td>
                 </tr>
               );
             })}
             {(cotas ?? []).length === 0 && (
               <tr>
-                <td colSpan={7} className="muted">
+                <td colSpan={8} className="muted">
                   Nenhuma cota ainda.
                 </td>
               </tr>

@@ -383,6 +383,12 @@ alter table cotas add column if not exists pagamento_tipo text not null default 
   -- recorrente | parcelado
 alter table cotas add column if not exists parcelas int;  -- nº de parcelas no cartão (parcelado)
 
+-- Cancelamento POR SOLICITAÇÃO (cliente solicita no portal; admin confirma)
+alter table cotas add column if not exists cancelamento_solicitado_em timestamptz;
+alter table cotas add column if not exists cancelamento_motivo text;
+-- Multa de cancelamento (percentual sobre valores pagos; mínimo 30%)
+alter table grupos add column if not exists multa_cancelamento_percent numeric(5,2) not null default 30;
+
 -- Fluxo de compra/entrega da raquete ao contemplado (gestão logística + custo real)
 alter table contemplacoes add column if not exists status_entrega text not null default 'aguardando';
   -- aguardando | comprado | enviado | entregue
