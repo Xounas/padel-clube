@@ -163,6 +163,30 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <footer
+        style={{
+          borderTop: "1px solid var(--border)",
+          background: "var(--bg-soft)",
+        }}
+      >
+        <div
+          className="container spread small"
+          style={{ padding: "20px", flexWrap: "wrap", gap: 8 }}
+        >
+          <span className="muted">
+            RaqueteClub · JM Soluções LTDA · CNPJ 36.845.130/0001-72
+          </span>
+          <span className="row" style={{ gap: 16 }}>
+            <Link href="/termos" className="muted">
+              Termos de Uso
+            </Link>
+            <Link href="/privacidade" className="muted">
+              Política de Privacidade
+            </Link>
+          </span>
+        </div>
+      </footer>
     </main>
   );
 }
