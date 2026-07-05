@@ -376,6 +376,13 @@ alter table cotas  add column if not exists raquete_modelo text;
 alter table cotas  add column if not exists raquete_descricao text;
 alter table cotas  add column if not exists raquete_imagem_url text;
 
+-- Aprovação manual de cadastro + tipo de pagamento (cartão recorrente/parcelado)
+alter type cota_status add value if not exists 'aguardando';  -- aguardando aprovação do admin
+alter table cotas add column if not exists aprovada_em timestamptz;
+alter table cotas add column if not exists pagamento_tipo text not null default 'recorrente';
+  -- recorrente | parcelado
+alter table cotas add column if not exists parcelas int;  -- nº de parcelas no cartão (parcelado)
+
 -- Fluxo de compra/entrega da raquete ao contemplado (gestão logística + custo real)
 alter table contemplacoes add column if not exists status_entrega text not null default 'aguardando';
   -- aguardando | comprado | enviado | entregue

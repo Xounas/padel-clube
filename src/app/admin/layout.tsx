@@ -17,6 +17,7 @@ export default async function AdminLayout({
           { href: "/admin/grupos", label: "Grupos" },
           { href: "/admin/cotas", label: "Cotas" },
           { href: "/admin/clientes", label: "Clientes" },
+          { href: "/admin/aprovacoes", label: "Aprovações" },
           { href: "/admin/cobrancas", label: "Cobranças" },
           { href: "/admin/inadimplencia", label: "Inadimplência" },
           { href: "/admin/contemplacao", label: "Contemplação" },

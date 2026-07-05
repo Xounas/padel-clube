@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { consultarCredito } from "@/lib/credito";
-import {
-  createCustomer,
-  createSubscription,
-  listSubscriptionPayments,
-  tokenizarCartao,
-} from "@/lib/asaas/client";
+import { createCustomer, tokenizarCartao } from "@/lib/asaas/client";
 
 /**
  * Adesão de um participante a um grupo.
- * Orquestra: análise de crédito -> cliente Asaas -> aloca cota -> assinatura recorrente.
+ * Pagamento é SEMPRE no cartão (recorrente ou parcelado). A cota fica
+ * "aguardando" aprovação manual do admin — NENHUMA cobrança é criada aqui.
+ * A análise de crédito é apenas informativa (o admin decide).
  *
- * body: { grupo_id, cpf, telefone, aceite_contrato: boolean,
- *         cartao?: {holderName, number, expiryMonth, expiryYear, ccv},
- *         endereco?: {cep, numero} }   // cartão => débito automático
+ * body: { grupo_id, cpf, telefone, aceite_contrato,
+ *         cartao: {holderName, number, expiryMonth, expiryYear, ccv},
+ *         endereco: {cep, numero},
+ *         pagamento_tipo: 'recorrente'|'parcelado', parcelas?: number }
  */
 export async function POST(req: NextRequest) {
   const supabase = createClient();
@@ -25,6 +23,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const { grupo_id, cpf, telefone, aceite_contrato, cartao, endereco } = body;
+  const pagamentoTipo = body.pagamento_tipo === "parcelado" ? "parcelado" : "recorrente";
 
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -43,8 +42,15 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+  // pagamento SÓ no cartão de crédito
+  if (!cartao?.number || !cartao?.ccv || !cartao?.expiryMonth) {
+    return NextResponse.json(
+      { error: "O pagamento é no cartão de crédito. Preencha os dados do cartão." },
+      { status: 400 },
+    );
+  }
 
-  const db = createAdminClient(); // writes de cota/assinatura exigem service role
+  const db = createAdminClient(); // writes de cota exigem service role
 
   // perfil + dados básicos
   const { data: profile } = await db
@@ -70,7 +76,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "grupo lotado" }, { status: 400 });
   }
 
-  // 1) análise de crédito
+  // 1) análise de crédito — APENAS INFORMATIVA (o admin aprova manualmente depois)
   const credito = await consultarCredito(cpf);
   const statusCredito = credito.aprovado
     ? "aprovado"
@@ -87,15 +93,6 @@ export async function POST(req: NextRequest) {
       analise_credito_em: new Date().toISOString(),
     })
     .eq("id", user.id);
-
-  // recusa só bloqueia quando o bureau reprova explicitamente.
-  // 'pendente' (provider sem credencial/falha) segue para revisão manual do admin.
-  if (statusCredito === "recusado") {
-    return NextResponse.json(
-      { aprovado: false, motivo: credito.motivo },
-      { status: 200 },
-    );
-  }
 
   // 2) cliente Asaas (reusa se já existir) — erros do Asaas viram JSON legível
   let customerId = profile?.asaas_customer_id ?? null;
@@ -121,16 +118,76 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 3) aloca a próxima cota livre (numero sequencial)
-  const numero = (usadas ?? 0) + 1;
+  // 3) tokeniza o cartão (obrigatório) — nº do cartão NÃO fica conosco
+  let cartaoInfo: { token: string; ultimos4: string; bandeira: string };
+  try {
+    const tk = await tokenizarCartao({
+      customer: customerId!,
+      creditCard: {
+        holderName: cartao.holderName,
+        number: String(cartao.number).replace(/\s/g, ""),
+        expiryMonth: cartao.expiryMonth,
+        expiryYear: cartao.expiryYear,
+        ccv: cartao.ccv,
+      },
+      creditCardHolderInfo: {
+        name: profile?.nome || cartao.holderName,
+        email: profile?.email || "",
+        cpfCnpj: cpf.replace(/\D/g, ""),
+        postalCode: (endereco?.cep ?? "").replace(/\D/g, ""),
+        addressNumber: endereco?.numero ?? "",
+        phone: (telefone ?? "").replace(/\D/g, ""),
+      },
+      remoteIp: ip,
+    });
+    cartaoInfo = {
+      token: tk.creditCardToken,
+      ultimos4: tk.creditCardNumber,
+      bandeira: tk.creditCardBrand,
+    };
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: `Cartão recusado: ${e?.message ?? e}` },
+      { status: 400 },
+    );
+  }
+
+  // 4) aloca a cota como AGUARDANDO aprovação (sem cobrança ainda)
+  const valorTotal = Number(grupo.valor_mensal) * Number(grupo.duracao_meses);
+  const snapshot = {
+    nome: profile?.nome || profile?.email || "Aderente",
+    cpf,
+    grupo_nome: grupo.nome,
+    bem_descricao: grupo.bem_descricao || "Raquete de padel",
+    cota_numero: (usadas ?? 0) + 1,
+    valor_mensal: Number(grupo.valor_mensal),
+    duracao_meses: Number(grupo.duracao_meses),
+    valor_total: valorTotal,
+    bem_valor: Number(grupo.bem_valor),
+    promissoria_valor: valorTotal,
+    multa_percent: Number(grupo.multa_atraso_percent),
+    juros_am_percent: 1,
+    aceite_em: "",
+    aceite_ip: "",
+  };
+
   const { data: cota, error: cotaErr } = await db
     .from("cotas")
     .insert({
       grupo_id,
       participante_id: user.id,
-      numero,
-      status: "ativa",
+      numero: (usadas ?? 0) + 1,
+      status: "aguardando", // aguardando aprovação do admin
       data_adesao: new Date().toISOString().slice(0, 10),
+      contrato_snapshot: snapshot,
+      cartao_token: cartaoInfo.token,
+      cartao_ultimos4: cartaoInfo.ultimos4,
+      cartao_bandeira: cartaoInfo.bandeira,
+      pagamento_tipo: pagamentoTipo,
+      parcelas:
+        pagamentoTipo === "parcelado"
+          ? Number(body.parcelas || grupo.duracao_meses)
+          : null,
     })
     .select("id, numero")
     .single();
@@ -141,164 +198,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 4) assinatura recorrente no Asaas (gera as parcelas mensais)
-  const hoje = new Date();
-  const primeiroVenc = grupo.data_inicio
-    ? new Date(grupo.data_inicio)
-    : new Date(hoje.getTime() + 3 * 86400000); // +3 dias
-  const nextDueDate = primeiroVenc.toISOString().slice(0, 10);
-
-  try {
-    // 4a) débito automático: tokeniza o cartão (nº do cartão NÃO fica conosco)
-    let cartaoInfo: {
-      token: string;
-      ultimos4: string;
-      bandeira: string;
-    } | null = null;
-    if (cartao?.number) {
-      const tk = await tokenizarCartao({
-        customer: customerId!,
-        creditCard: {
-          holderName: cartao.holderName,
-          number: String(cartao.number).replace(/\s/g, ""),
-          expiryMonth: cartao.expiryMonth,
-          expiryYear: cartao.expiryYear,
-          ccv: cartao.ccv,
-        },
-        creditCardHolderInfo: {
-          name: profile?.nome || cartao.holderName,
-          email: profile?.email || "",
-          cpfCnpj: cpf.replace(/\D/g, ""),
-          postalCode: (endereco?.cep ?? "").replace(/\D/g, ""),
-          addressNumber: endereco?.numero ?? "",
-          phone: (telefone ?? "").replace(/\D/g, ""),
-        },
-        remoteIp: ip,
-      });
-      cartaoInfo = {
-        token: tk.creditCardToken,
-        ultimos4: tk.creditCardNumber,
-        bandeira: tk.creditCardBrand,
-      };
-    }
-
-    // 4b) assinatura recorrente (débito automático se houver token)
-    const sub = await createSubscription({
-      customer: customerId!,
-      value: Number(grupo.valor_mensal),
-      nextDueDate,
-      billingType: cartaoInfo
-        ? "CREDIT_CARD"
-        : ((process.env.ASAAS_BILLING as any) ?? "UNDEFINED"),
-      description: `Cota ${cota.numero} — ${grupo.nome}`,
-      maxPayments: Number(grupo.duracao_meses),
-      externalReference: cota.id,
-      fine: { value: Number(grupo.multa_atraso_percent) },
-      interest: { value: 1 }, // 1% a.m. (teto legal)
-      creditCardToken: cartaoInfo?.token,
-    });
-
-    // snapshot do contrato + aceite (validade jurídica da promissória)
-    const valorTotal = Number(grupo.valor_mensal) * Number(grupo.duracao_meses);
-    const snapshot = {
-      nome: profile?.nome || profile?.email || "Aderente",
-      cpf,
-      grupo_nome: grupo.nome,
-      bem_descricao: grupo.bem_descricao || "Raquete de padel",
-      cota_numero: cota.numero,
-      valor_mensal: Number(grupo.valor_mensal),
-      duracao_meses: Number(grupo.duracao_meses),
-      valor_total: valorTotal,
-      bem_valor: Number(grupo.bem_valor),
-      promissoria_valor: valorTotal,
-      multa_percent: Number(grupo.multa_atraso_percent),
-      juros_am_percent: 1,
-      aceite_em: "", // preenchido no ACEITE ONLINE do portal
-      aceite_ip: "",
-    };
-
-    // liga a assinatura à cota e guarda a minuta; ACEITE fica pendente no portal
-    await db
-      .from("cotas")
-      .update({
-        asaas_subscription_id: sub.id,
-        contrato_snapshot: snapshot,
-        cartao_token: cartaoInfo?.token ?? null,
-        cartao_ultimos4: cartaoInfo?.ultimos4 ?? null,
-        cartao_bandeira: cartaoInfo?.bandeira ?? null,
-      })
-      .eq("id", cota.id);
-
-    // GARANTE a 1ª parcela em `cobrancas` já na adesão, com os dados que já temos
-    // (o Asaas às vezes ainda NÃO gerou a cobrança neste instante -> não dá pra
-    // depender de listSubscriptionPayments). O webhook depois casa por competência.
-    const taxa = Number(grupo.valor_mensal) * (Number(grupo.taxa_adm_percent) / 100);
-    const { error: cobErr } = await db.from("cobrancas").upsert(
-      {
-        cota_id: cota.id,
-        grupo_id,
-        competencia: nextDueDate.slice(0, 7) + "-01",
-        parcela_num: 1,
-        valor: Number(grupo.valor_mensal),
-        valor_taxa_adm: taxa,
-        vencimento: nextDueDate,
-        status: "pendente",
-      },
-      { onConflict: "cota_id,competencia" },
-    );
-    if (cobErr) {
-      // não derruba a adesão, mas registra o motivo p/ diagnóstico
-      console.error("Falha ao inserir 1ª cobrança:", cobErr.message);
-    }
-
-    // Best-effort: se o Asaas já gerou a fatura, enriquece com id/URL/status.
-    let payUrl: string | null = null;
-    try {
-      const pays: any = await listSubscriptionPayments(sub.id);
-      const lista: any[] = pays?.data ?? [];
-      payUrl = lista[0]?.invoiceUrl ?? null;
-      for (const p of lista) {
-        const pago = p.status === "RECEIVED" || p.status === "CONFIRMED";
-        await db.from("cobrancas").upsert(
-          {
-            cota_id: cota.id,
-            grupo_id,
-            competencia: String(p.dueDate).slice(0, 7) + "-01",
-            valor: p.value,
-            valor_taxa_adm:
-              Number(p.value) * (Number(grupo.taxa_adm_percent) / 100),
-            vencimento: p.dueDate,
-            status: pago ? "pago" : "pendente",
-            asaas_payment_id: p.id,
-            asaas_invoice_url: p.invoiceUrl ?? null,
-            data_pagamento: pago ? (p.paymentDate ?? null) : null,
-            valor_pago: pago ? p.value : null,
-          },
-          { onConflict: "cota_id,competencia" },
-        );
-      }
-      await db.rpc("recalc_pontuacao", { p_cota_id: cota.id });
-    } catch {
-      /* fatura pode ainda não ter sido gerada — webhook cobre depois */
-    }
-
-    return NextResponse.json({
-      aprovado: true,
-      cota: cota.numero,
-      cota_id: cota.id,
-      subscription_id: sub.id,
-      debito_automatico: !!cartaoInfo,
-      cartao: cartaoInfo
-        ? { ultimos4: cartaoInfo.ultimos4, bandeira: cartaoInfo.bandeira }
-        : null,
-      pay_url: payUrl,
-    });
-  } catch (e: any) {
-    // rollback da cota se a assinatura falhar
-    await db.from("cotas").delete().eq("id", cota.id);
-    return NextResponse.json(
-      { error: `Falha ao criar assinatura: ${e?.message ?? e}` },
-      { status: 502 },
-    );
-  }
+  return NextResponse.json({
+    aguardando: true,
+    cota: cota.numero,
+    cota_id: cota.id,
+    pagamento_tipo: pagamentoTipo,
+    cartao: { ultimos4: cartaoInfo.ultimos4, bandeira: cartaoInfo.bandeira },
+  });
 }

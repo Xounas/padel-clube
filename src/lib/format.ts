@@ -24,6 +24,7 @@ export function statusBadge(status: string): { label: string; cls: string } {
     cancelado: { label: "Cancelado", cls: "badge-muted" },
     estornado: { label: "Estornado", cls: "badge-warn" },
     ativa: { label: "Ativa", cls: "badge-ok" },
+    aguardando: { label: "Aguardando aprovação", cls: "badge-warn" },
     contemplada: { label: "Contemplada", cls: "badge-ok" },
     inadimplente: { label: "Inadimplente", cls: "badge-danger" },
     quitada: { label: "Quitada", cls: "badge-ok" },

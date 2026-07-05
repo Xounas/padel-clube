@@ -133,6 +133,32 @@ export async function listSubscriptionPayments(subscriptionId: string) {
   return asaas(`/subscriptions/${subscriptionId}/payments`);
 }
 
+/**
+ * Parcelamento no cartão (installment): cobra o total em N parcelas no cartão.
+ * Alternativa à assinatura recorrente. Requer creditCardToken.
+ */
+export async function createInstallment(params: {
+  customer: string;
+  installmentCount: number;
+  totalValue: number;
+  dueDate: string;
+  creditCardToken: string;
+  description?: string;
+  externalReference?: string; // cota.id
+  fine?: { value: number };
+  interest?: { value: number };
+}) {
+  return asaas("/payments", {
+    method: "POST",
+    body: { billingType: "CREDIT_CARD", ...params },
+  });
+}
+
+/** Lista os pagamentos de um parcelamento (installment). */
+export async function listInstallmentPayments(installmentId: string) {
+  return asaas(`/payments?installment=${installmentId}`);
+}
+
 /** Cobrança avulsa (ex.: lance, taxa de adesão). */
 export async function createPayment(params: {
   customer: string;
