@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Padel Clube — sua raquete parcelada em grupo",
+  title: "RaqueteClub — sua raquete de padel em grupo",
   description:
-    "Clube de contemplação de raquetes de padel. Pague em parcelas, receba sua raquete.",
+    "RaqueteClub: clube de compra em grupo. Pague uma mensalidade acessível e receba sua raquete de padel por contemplação.",
 };
 
 export default function RootLayout({

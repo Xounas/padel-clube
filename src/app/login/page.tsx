@@ -2,8 +2,8 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { Logo } from "@/components/Logo";
 
 function LoginForm() {
   const router = useRouter();
@@ -58,9 +58,9 @@ function LoginForm() {
       className="container"
       style={{ maxWidth: 420, paddingTop: 72, paddingBottom: 48 }}
     >
-      <Link href="/" className="brand" style={{ display: "block", marginBottom: 24 }}>
-        Padel<span> Clube</span>
-      </Link>
+      <div style={{ marginBottom: 24 }}>
+        <Logo size={32} />
+      </div>
       <div className="card stack">
         <h2 style={{ margin: 0 }}>{signup ? "Criar conta" : "Entrar"}</h2>
         <form onSubmit={handleSubmit} className="stack">

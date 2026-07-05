@@ -61,7 +61,7 @@ const dataExtenso = (iso: string) =>
  * usado tanto pelo PDF quanto pela renderização HTML no portal.
  */
 export function montarContrato(s: ContratoSnapshot): ConteudoContrato {
-  const admin = s.admin_nome || "PADEL CLUBE ADMINISTRAÇÃO DE GRUPOS";
+  const admin = s.admin_nome || "RAQUETECLUB ADMINISTRAÇÃO DE GRUPOS";
   const aceito = !!s.aceite_em;
 
   const aceiteTexto = aceito

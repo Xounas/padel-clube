@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { PLANOS } from "@/lib/planos";
+import { Logo } from "@/components/Logo";
 
 export default function Home() {
   return (
     <main>
       <nav className="nav">
-        <div className="container spread" style={{ height: 60 }}>
-          <div className="brand">
-            Padel<span> Clube</span>
-          </div>
+        <div className="container spread" style={{ height: 62 }}>
+          <Logo size={28} />
           <div className="row">
             <Link href="/login" className="muted small">
               Entrar
@@ -20,27 +19,72 @@ export default function Home() {
         </div>
       </nav>
 
-      <section className="container" style={{ paddingTop: 72, paddingBottom: 48 }}>
-        <div style={{ maxWidth: 720 }}>
-          <span className="badge badge-ok">Consórcio de raquetes de padel</span>
-          <h1 style={{ fontSize: 46, lineHeight: 1.05, margin: "18px 0 12px" }}>
-            Sua raquete de padel dos sonhos,{" "}
-            <span style={{ color: "var(--primary)" }}>parcelada em grupo</span>.
-          </h1>
-          <p className="muted" style={{ fontSize: 18, lineHeight: 1.6 }}>
-            Entre num grupo pequeno, pague uma mensalidade que cabe no bolso e
-            seja contemplado com sua raquete. Sem juros abusivos — você paga o
-            preço de mercado, no seu ritmo, com contemplação por adimplência.
-          </p>
-          <div className="row" style={{ marginTop: 26 }}>
-            <Link href="/login?signup=1" className="btn">
-              Entrar num grupo
-            </Link>
-            <Link href="/login" className="btn btn-ghost">
-              Já sou membro
-            </Link>
+      {/* HERO com faixa de marca */}
+      <div
+        style={{
+          background:
+            "linear-gradient(160deg, #0a2540 0%, #0f3d7a 55%, #1570e6 120%)",
+          color: "#eaf1fb",
+        }}
+      >
+        <section
+          className="container"
+          style={{ paddingTop: 72, paddingBottom: 64 }}
+        >
+          <div style={{ maxWidth: 720 }}>
+            <span
+              className="badge"
+              style={{
+                background: "rgba(255,255,255,.12)",
+                color: "#dbe8fb",
+                border: "1px solid rgba(255,255,255,.25)",
+              }}
+            >
+              🎾 RaqueteClub · clube de compra em grupo
+            </span>
+            <h1
+              style={{
+                fontSize: 48,
+                lineHeight: 1.05,
+                margin: "18px 0 12px",
+                color: "#fff",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              Sua raquete de padel top,{" "}
+              <span style={{ color: "#16c07a" }}>sem pesar no bolso</span>.
+            </h1>
+            <p style={{ fontSize: 18, lineHeight: 1.6, color: "#c3d4ec" }}>
+              Entre num grupo, pague uma mensalidade acessível e seja
+              contemplado com a sua raquete. Sem juros de financiamento — você
+              paga o preço de mercado, no seu ritmo, por contemplação.
+            </p>
+            <div className="row" style={{ marginTop: 26 }}>
+              <Link
+                href="/login?signup=1"
+                className="btn"
+                style={{ background: "#16c07a" }}
+              >
+                Entrar num grupo
+              </Link>
+              <Link
+                href="/login"
+                className="btn btn-ghost"
+                style={{
+                  background: "transparent",
+                  color: "#fff",
+                  borderColor: "rgba(255,255,255,.4)",
+                }}
+              >
+                Já sou membro
+              </Link>
+            </div>
           </div>
-        </div>
+        </section>
+      </div>
+
+      <section className="container" style={{ paddingTop: 40, paddingBottom: 48 }}>
+        <div style={{ display: "none" }} />
 
         <div className="grid grid-3" style={{ marginTop: 56 }}>
           <div className="card">
@@ -64,9 +108,10 @@ export default function Home() {
         </div>
 
         <div style={{ marginTop: 48 }}>
-          <h2 style={{ marginBottom: 6 }}>Escolha seu plano</h2>
+          <h2 style={{ marginBottom: 6 }}>Escolha seu ritmo: 12x, 18x ou 24x</h2>
           <p className="muted" style={{ marginTop: 0 }}>
-            Mesma raquete, ritmos diferentes. Todos os membros adimplentes são
+            A mensalidade depende da raquete do grupo (valores abaixo são de
+            exemplo). Ritmos diferentes, todos os membros adimplentes são
             contemplados até o fim do grupo.
           </p>
           <div className="grid grid-3">

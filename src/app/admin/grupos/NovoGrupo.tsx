@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { criarGrupo } from "./actions";
-import { PLANOS, planoPorId, lucroPorCota } from "@/lib/planos";
+import { PLANOS, planoPorId } from "@/lib/planos";
 import { ImageUpload } from "@/components/ImageUpload";
+import { brl } from "@/lib/format";
 
-/** Botão que se desabilita enquanto o envio está em andamento (anti-duplo-clique). */
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
@@ -18,9 +18,40 @@ function SubmitButton() {
 
 export function NovoGrupo() {
   const [open, setOpen] = useState(false);
-  const [planoId, setPlanoId] = useState(PLANOS[0].id);
+  const [duracaoId, setDuracaoId] = useState(PLANOS[0].id);
   const [imagemUrl, setImagemUrl] = useState("");
-  const plano = planoPorId(planoId);
+
+  // valor guiado pela RAQUETE — mensalidade deriva do valor de mercado ÷ duração
+  const [bemValor, setBemValor] = useState(PLANOS[0].bem_valor);
+  const [custo, setCusto] = useState(PLANOS[0].bem_custo);
+  const [duracao, setDuracao] = useState(PLANOS[0].duracao_meses);
+  const [contemplados, setContemplados] = useState(PLANOS[0].contemplados_por_mes);
+  const [mensalidade, setMensalidade] = useState(
+    Math.ceil(PLANOS[0].bem_valor / PLANOS[0].duracao_meses),
+  );
+  const [trava, setTrava] = useState(PLANOS[0].contemplavel_apos_parcelas);
+  const [taxaAdm, setTaxaAdm] = useState(PLANOS[0].taxa_adm_percent);
+
+  const totalCotas = Math.max(1, duracao * contemplados);
+  const lucroCota = mensalidade * duracao - custo;
+
+  function aplicarDuracao(id: string) {
+    const p = planoPorId(id);
+    setDuracaoId(id);
+    setDuracao(p.duracao_meses);
+    setContemplados(p.contemplados_por_mes);
+    setTrava(p.contemplavel_apos_parcelas);
+    setMensalidade(Math.ceil(bemValor / p.duracao_meses));
+  }
+  function mudarValor(v: number) {
+    setBemValor(v);
+    setMensalidade(Math.ceil(v / duracao));
+  }
+  function mudarDuracao(d: number) {
+    const dd = Math.max(1, d);
+    setDuracao(dd);
+    setMensalidade(Math.ceil(bemValor / dd));
+  }
 
   if (!open) {
     return (
@@ -35,7 +66,7 @@ export function NovoGrupo() {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,.6)",
+        background: "rgba(10,37,64,.5)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -46,111 +77,170 @@ export function NovoGrupo() {
     >
       <div
         className="card stack"
-        style={{ width: 540, maxHeight: "90vh", overflow: "auto" }}
+        style={{ width: 560, maxHeight: "90vh", overflow: "auto" }}
         onClick={(e) => e.stopPropagation()}
       >
         <h3 style={{ margin: 0 }}>Novo grupo</h3>
+        <p className="muted small" style={{ margin: 0 }}>
+          O valor do grupo é definido pela raquete: informe o preço de mercado e a
+          mensalidade é calculada pela duração escolhida.
+        </p>
 
-        {/* seletor de plano */}
+        {/* presets de DURAÇÃO */}
         <div className="row" style={{ gap: 8 }}>
           {PLANOS.map((p) => (
             <button
               key={p.id}
               type="button"
-              onClick={() => setPlanoId(p.id)}
-              className={`btn ${planoId === p.id ? "" : "btn-ghost"} small`}
-              style={{ flex: 1, flexDirection: "column", alignItems: "flex-start", padding: 10 }}
+              onClick={() => aplicarDuracao(p.id)}
+              className={`btn ${duracaoId === p.id ? "" : "btn-ghost"} small`}
+              style={{ flex: 1, flexDirection: "column", alignItems: "center", padding: 10 }}
             >
-              <strong>{p.nome}</strong>
+              <strong>{p.duracao_meses}x</strong>
               <span className="small" style={{ fontWeight: 400, opacity: 0.85 }}>
-                R${p.valor_mensal}/mês · {p.total_cotas} cotas · lucro R$
-                {lucroPorCota(p).toLocaleString("pt-BR")}/cota
+                {p.duracao_meses} meses
               </span>
             </button>
           ))}
         </div>
 
-        {/* key força o remount ao trocar de plano, aplicando os defaults */}
         <form
           action={async (fd) => {
             await criarGrupo(fd);
             setImagemUrl("");
-            setOpen(false); // fecha o modal ao concluir (evita reenvio)
+            setOpen(false);
           }}
           className="stack"
-          key={planoId}
         >
-          <input type="hidden" name="plano_id" value={planoId} />
           <input type="hidden" name="bem_imagem_url" value={imagemUrl} />
+          <input type="hidden" name="total_cotas" value={totalCotas} />
+
           <div>
             <label className="label">Nome do grupo</label>
             <input
               name="nome"
               className="input"
-              defaultValue={`${plano.nome} — Turma 1`}
+              defaultValue={`Grupo ${duracao}x — Turma 1`}
               required
             />
           </div>
           <div className="grid grid-2">
             <div>
               <label className="label">Modelo da raquete</label>
-              <input
-                name="bem_modelo"
-                className="input"
-                placeholder="Ex.: Adidas Metalbone 3.4"
-              />
+              <input name="bem_modelo" className="input" placeholder="Ex.: Adidas Metalbone 3.4" />
             </div>
             <div>
               <label className="label">Descrição</label>
-              <input
-                name="bem_descricao"
-                className="input"
-                placeholder="Ex.: carbono, formato lágrima"
-              />
+              <input name="bem_descricao" className="input" placeholder="Ex.: carbono, formato lágrima" />
             </div>
           </div>
           <div>
             <label className="label">Foto da raquete</label>
             <ImageUpload value={imagemUrl} onChange={setImagemUrl} />
           </div>
+
           <div className="grid grid-2">
             <div>
-              <label className="label">Valor mercado (R$)</label>
-              <input name="bem_valor" className="input" type="number" step="0.01" defaultValue={plano.bem_valor} />
+              <label className="label">Valor de mercado da raquete (R$)</label>
+              <input
+                name="bem_valor"
+                className="input"
+                type="number"
+                step="0.01"
+                value={bemValor}
+                onChange={(e) => mudarValor(Number(e.target.value))}
+              />
             </div>
             <div>
-              <label className="label">Custo (R$)</label>
-              <input name="bem_custo" className="input" type="number" step="0.01" defaultValue={plano.bem_custo} />
-            </div>
-            <div>
-              <label className="label">Mensalidade (R$)</label>
-              <input name="valor_mensal" className="input" type="number" step="0.01" defaultValue={plano.valor_mensal} />
+              <label className="label">Custo da raquete (R$)</label>
+              <input
+                name="bem_custo"
+                className="input"
+                type="number"
+                step="0.01"
+                value={custo}
+                onChange={(e) => setCusto(Number(e.target.value))}
+              />
             </div>
             <div>
               <label className="label">Duração (meses)</label>
-              <input name="duracao_meses" className="input" type="number" defaultValue={plano.duracao_meses} />
+              <input
+                name="duracao_meses"
+                className="input"
+                type="number"
+                value={duracao}
+                onChange={(e) => mudarDuracao(Number(e.target.value))}
+              />
             </div>
             <div>
-              <label className="label">Total de cotas</label>
-              <input name="total_cotas" className="input" type="number" defaultValue={plano.total_cotas} />
+              <label className="label">Mensalidade (R$) — calculada</label>
+              <input
+                name="valor_mensal"
+                className="input"
+                type="number"
+                step="0.01"
+                value={mensalidade}
+                onChange={(e) => setMensalidade(Number(e.target.value))}
+              />
             </div>
             <div>
               <label className="label">Contemplados/mês</label>
-              <input name="contemplados_por_mes" className="input" type="number" defaultValue={plano.contemplados_por_mes} />
+              <input
+                name="contemplados_por_mes"
+                className="input"
+                type="number"
+                value={contemplados}
+                onChange={(e) => setContemplados(Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <label className="label">Total de cotas (auto)</label>
+              <input className="input" value={totalCotas} disabled />
             </div>
             <div>
               <label className="label">Trava (parcelas p/ contemplar)</label>
-              <input name="contemplavel_apos_parcelas" className="input" type="number" defaultValue={plano.contemplavel_apos_parcelas} />
+              <input
+                name="contemplavel_apos_parcelas"
+                className="input"
+                type="number"
+                value={trava}
+                onChange={(e) => setTrava(Number(e.target.value))}
+              />
             </div>
             <div>
               <label className="label">Taxa adm (%)</label>
-              <input name="taxa_adm_percent" className="input" type="number" step="0.01" defaultValue={plano.taxa_adm_percent} />
+              <input
+                name="taxa_adm_percent"
+                className="input"
+                type="number"
+                step="0.01"
+                value={taxaAdm}
+                onChange={(e) => setTaxaAdm(Number(e.target.value))}
+              />
             </div>
             <div>
               <label className="label">Data de início (1º venc.)</label>
               <input name="data_inicio" className="input" type="date" />
             </div>
           </div>
+
+          {/* resumo ao vivo */}
+          <div
+            className="card"
+            style={{ background: "var(--bg-soft)", boxShadow: "none", padding: 12 }}
+          >
+            <div className="small">
+              <strong>{totalCotas} cotas</strong> · todos recebem em{" "}
+              <strong>{duracao} meses</strong> · cliente paga{" "}
+              <strong>{brl(mensalidade)}/mês</strong> ({brl(mensalidade * duracao)}{" "}
+              no total por uma raquete de {brl(bemValor)})
+            </div>
+            <div className="small" style={{ color: "var(--accent)", marginTop: 4 }}>
+              Lucro estimado: <strong>{brl(lucroCota)}/cota</strong> ·{" "}
+              {brl(lucroCota * totalCotas)}/grupo
+            </div>
+          </div>
+
           <div className="row">
             <SubmitButton />
             <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>

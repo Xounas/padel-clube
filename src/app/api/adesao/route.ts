@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
   if (!customerId) {
     try {
       const customer = await createCustomer({
-        name: profile?.nome || profile?.email || "Membro Padel Clube",
+        name: profile?.nome || profile?.email || "Membro RaqueteClub",
         cpfCnpj: cpf.replace(/\D/g, ""),
         email: profile?.email ?? undefined,
         mobilePhone: telefone ?? undefined,

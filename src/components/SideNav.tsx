@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Logo } from "./Logo";
 
 export function TopNav({
   items,
@@ -18,9 +19,9 @@ export function TopNav({
         style={{ height: 58, flexWrap: "wrap" }}
       >
         <div className="row" style={{ gap: 4 }}>
-          <Link href="/" className="brand" style={{ marginRight: 12 }}>
-            Padel<span> Clube</span>
-          </Link>
+          <span style={{ marginRight: 12 }}>
+            <Logo size={26} />
+          </span>
           {items.map((it) => (
             <Link
               key={it.href}
